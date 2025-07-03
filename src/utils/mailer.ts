@@ -6,6 +6,7 @@ dotenv.config();
 const BASE_URL = process.env.BASE_URL || "http://localhost";
 const PORT = parseInt(process.env.PORT || "5000", 10);
 const COMPANY_NAME = process.env.COMPANY_NAME || "Your Company";
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -37,6 +38,29 @@ export const sendVerificationEmail = async (
       <p>Please click the link below to verify your email address:</p>
       <a href="${link}">${link}</a>
       <p>If you did not request this, you can safely ignore this email.</p>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
+export const sendPasswordResetEmail = async (
+  to: string,
+  resetCode: string
+): Promise<void> => {
+  const link = `${FRONTEND_URL}/reset-password?code=${resetCode}`;
+
+  const mailOptions = {
+    from: `"${COMPANY_NAME} Support" <${
+      process.env.RESET_EMAIL_USER || process.env.EMAIL_USER
+    }>`,
+    to,
+    subject: "Reset Your Password",
+    html: `
+      <p>You requested to reset your password for ${COMPANY_NAME}.</p>
+      <p>Click the link below to continue:</p>
+      <a href="${link}">${link}</a>
+      <p>If you didn't request this, you can ignore this message.</p>
     `,
   };
 
