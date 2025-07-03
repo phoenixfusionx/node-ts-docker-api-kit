@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const BASE_URL = process.env.BASE_URL || "http://localhost";
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || "5000", 10);
 const COMPANY_NAME = process.env.COMPANY_NAME || "Your Company";
 
 const transporter = nodemailer.createTransport({
@@ -26,7 +26,7 @@ export const sendVerificationEmail = async (
   to: string,
   verificationCode: string
 ): Promise<void> => {
-  const verificationLink = `${BASE_URL}:${PORT}/api/auth/verify-email/${verificationCode}`;
+  const link = `${BASE_URL}:${PORT}/api/auth/verify-email/${verificationCode}`;
 
   const mailOptions = {
     from: `"${COMPANY_NAME}" <${process.env.EMAIL_USER}>`,
@@ -35,7 +35,7 @@ export const sendVerificationEmail = async (
     html: `
       <p>Welcome to ${COMPANY_NAME}!</p>
       <p>Please click the link below to verify your email address:</p>
-      <a href="${verificationLink}">${verificationLink}</a>
+      <a href="${link}">${link}</a>
       <p>If you did not request this, you can safely ignore this email.</p>
     `,
   };

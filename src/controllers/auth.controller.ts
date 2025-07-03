@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
-import User from "../models/User";
-import { generateToken } from "../utils/jwt";
-import { sendVerificationEmail } from "../utils/mailer";
+import User from "../models/user.model";
+import { generateToken } from "../utils/jwt.ts";
+import { sendPasswordResetEmail, sendVerificationEmail } from "../utils/mailer";
 
 // Register
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -16,12 +16,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     // name: English letters, numbers, underscores, and hyphens only, 4-20 chars
     if (!/^[a-zA-Z0-9_-]{4,20}$/.test(name)) {
-      res
-        .status(400)
-        .json({
-          message:
-            "Name must be 4-20 characters long and can include letters, numbers, underscores, and hyphens only.",
-        });
+      res.status(400).json({
+        message:
+          "Name must be 4-20 characters long and can include letters, numbers, underscores, and hyphens only.",
+      });
       return;
     }
 
@@ -158,7 +156,7 @@ export const forgotPassword = async (
     user.verificationCode = resetCode;
     await user.save();
 
-    await sendVerificationEmail(user.email, resetCode); // reuse same mailer for simplicity
+    await sendPasswordResetEmail(user.email, resetCode); // reuse same mailer for simplicity
 
     res
       .status(200)
