@@ -4,7 +4,11 @@ import User from "../models/user.model";
 import { generateToken } from "../utils/jwt.ts";
 import { sendPasswordResetEmail, sendVerificationEmail } from "../utils/mailer";
 
-// Register
+/**
+ * @desc Register new user
+ * @route POST /api/auth/register
+ * @access Public
+ */
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password } = req.body;
@@ -72,7 +76,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Verify Email
+/**
+ * @desc Verify email using the verification code
+ * @route GET /api/auth/verify-email/:code
+ * @access Public
+ */
 export const verifyEmail = async (
   req: Request,
   res: Response
@@ -102,7 +110,11 @@ export const verifyEmail = async (
   }
 };
 
-// Login
+/**
+ * @desc Login user and return JWT token
+ * @route POST /api/auth/login
+ * @access Public
+ */
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
@@ -137,7 +149,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Forgot Password
+/**
+ * @desc Send password reset link to user's email
+ * @route POST /api/auth/forgot-password
+ * @access Public
+ */
 export const forgotPassword = async (
   req: Request,
   res: Response
@@ -171,7 +187,11 @@ export const forgotPassword = async (
   }
 };
 
-// Reset Password
+/**
+ * @desc Reset password using the reset code
+ * @route POST /api/auth/reset-password
+ * @access Public
+ */
 export const resetPassword = async (
   req: Request,
   res: Response
