@@ -1,132 +1,187 @@
 import { Request, Response } from "express";
+import crypto from "crypto";
 import User from "../models/user.model";
+import { generateToken } from "../utils/jwt";
+import { sendPasswordResetEmail, sendVerificationEmail } from "../utils/mailer";
 
 /**
- * @desc Get current logged-in user's profile
- * @route GET /api/users/me
- * @access Private
+ * @desc Register new user
+ * @route POST /api/auth/register
+ * @access Public
  */
-export const getMe = async (req: Request, res: Response): Promise<void> => {
+export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = await User.findById(req.user?.id).select(
-      "-password -verificationCode"
-    );
+    const { name, email, password } = req.body;
+
+    const existingUser = await User.findOne({ $or: [{ email }, { name }] });
+
+    if (existingUser) {
+      res.status(400).json({ message: "Email or name already in use." });
+      return;
+    }
+
+    const verificationCode = crypto.randomBytes(32).toString("hex");
+
+    const user = await User.create({
+      name,
+      email,
+      password,
+      verificationCode,
+    });
+
+    await sendVerificationEmail(user.email, verificationCode);
+
+    res.status(201).json({
+      message:
+        "Account created. Please check your email to verify your account.",
+    });
+  } catch (err: any) {
+    console.error("❌ Register error:", err.message);
+    res.status(500).json({ message: "Something went wrong." });
+  }
+};
+
+/**
+ * @desc Verify email using the verification code
+ * @route GET /api/auth/verify-email/:code
+ * @access Public
+ */
+export const verifyEmail = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { code } = req.params;
+
+    const user = await User.findOne({ verificationCode: code });
+
+    if (!user) {
+      res
+        .status(400)
+        .json({ message: "Invalid or expired verification code." });
+      return;
+    }
+
+    user.isVerified = true;
+    user.verificationCode = null;
+    await user.save();
+
+    res
+      .status(200)
+      .json({ message: "Email successfully verified. You can now log in." });
+  } catch (err: any) {
+    console.error("❌ Verification error:", err.message);
+    res.status(500).json({ message: "Something went wrong." });
+  }
+};
+
+/**
+ * @desc Login user and return JWT token
+ * @route POST /api/auth/login
+ * @access Public
+ */
+export const login = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user || !(await user.comparePassword(password))) {
+      res.status(401).json({ message: "Invalid email or password." });
+      return;
+    }
+
+    if (!user.isVerified) {
+      res.status(403).json({ message: "Please verify your email first." });
+      return;
+    }
+
+    const token = generateToken({
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role,
+    });
+
+    res.status(200).json({ token });
+  } catch (err: any) {
+    console.error("❌ Login error:", err.message);
+    res.status(500).json({ message: "Something went wrong." });
+  }
+};
+
+/**
+ * @desc Send password reset link to user's email
+ * @route POST /api/auth/forgot-password
+ * @access Public
+ */
+export const forgotPassword = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
     if (!user) {
       res.status(404).json({ message: "User not found." });
       return;
     }
 
-    res.status(200).json(user);
+    const resetCode = crypto.randomBytes(32).toString("hex");
+    user.verificationCode = resetCode;
+    await user.save();
+
+    await sendPasswordResetEmail(user.email, resetCode);
+
+    res
+      .status(200)
+      .json({ message: "Reset link has been sent to your email." });
   } catch (err: any) {
-    res.status(500).json({ message: err.message });
+    console.error("❌ Forgot password error:", err.message);
+    res.status(500).json({ message: "Something went wrong." });
   }
 };
 
 /**
- * @desc Update name or email of the current user
- * @route PUT /api/users/update
- * @access Private
+ * @desc Reset password using the reset code
+ * @route POST /api/auth/reset-password
+ * @access Public
  */
-export const updateUser = async (
+export const resetPassword = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const { name, email } = req.body;
+    const { code, newPassword } = req.body;
 
-    const updated = await User.findByIdAndUpdate(
-      req.user?.id,
-      { $set: { name, email } },
-      { new: true, runValidators: true }
-    ).select("-password -verificationCode");
-
-    res.status(200).json(updated);
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-/**
- * @desc Change password of the current user
- * @route PUT /api/users/password
- * @access Private
- */
-export const updatePassword = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-
-    const user = await User.findById(req.user?.id);
-    if (!user) {
-      res.status(404).json({ message: "User not found." });
+    // Check password strength
+    if (
+      newPassword.length < 8 ||
+      !/[a-z]/.test(newPassword) ||
+      !/[A-Z]/.test(newPassword) ||
+      !/\d/.test(newPassword) ||
+      !/[^\w\s]/.test(newPassword)
+    ) {
+      res.status(400).json({
+        message:
+          "Password must be at least 8 characters and include uppercase, lowercase, number, and symbol.",
+      });
       return;
     }
 
-    const isMatch = await user.comparePassword(currentPassword);
-    if (!isMatch) {
-      res.status(400).json({ message: "Current password is incorrect." });
+    const user = await User.findOne({ verificationCode: code });
+    if (!user) {
+      res.status(400).json({ message: "Invalid or expired reset code." });
       return;
     }
 
     user.password = newPassword;
+    user.verificationCode = null;
     await user.save();
 
-    res.status(200).json({ message: "Password updated successfully." });
+    res.status(200).json({ message: "Password has been reset successfully." });
   } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-/**
- * @desc Delete the current user's account
- * @route DELETE /api/users/me
- * @access Private
- */
-export const deleteMyAccount = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    await User.findByIdAndDelete(req.user?.id);
-    res.status(200).json({ message: "Account deleted successfully." });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-/**
- * @desc Get all users (admin only)
- * @route GET /api/users/
- * @access Private/Admin
- */
-export const getAllUsers = async (
-  _req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const users = await User.find().select("-password -verificationCode");
-    res.status(200).json(users);
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-/**
- * @desc Delete a specific user by ID (admin only)
- * @route DELETE /api/users/:id
- * @access Private/Admin
- */
-export const deleteUserById = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const { id } = req.params;
-    await User.findByIdAndDelete(id);
-    res.status(200).json({ message: "User deleted successfully." });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
+    console.error("❌ Reset password error:", err.message);
+    res.status(500).json({ message: "Something went wrong." });
   }
 };

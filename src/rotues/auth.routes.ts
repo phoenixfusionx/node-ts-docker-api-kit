@@ -1,148 +1,159 @@
 import { Router } from "express";
 import {
-  getMe,
-  updateUser,
-  updatePassword,
-  deleteMyAccount,
-  getAllUsers,
-  deleteUserById,
+  register,
+  verifyEmail,
+  login,
+  forgotPassword,
+  resetPassword,
 } from "../controllers/auth.controller";
-import { authorize } from "../middleware/auth.middleware";
+import {
+  validateRegistration,
+  validateLogin,
+} from "../middleware/validation.middleware";
 
 const router = Router();
 
 /**
  * @swagger
  * tags:
- *   name: Users
- *   description: User profile & management APIs
+ *   name: Auth
+ *   description: Authentication and account management
  */
 
 /**
  * @swagger
- * /api/users/me:
- *   get:
- *     summary: Get current logged-in user's data
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User data returned
- *       401:
- *         description: Unauthorized
- */
-router.get("/me", authorize(), getMe);
-
-/**
- * @swagger
- * /api/users/update:
- *   put:
- *     summary: Update user's name or email
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
  *             properties:
  *               name:
  *                 type: string
  *               email:
  *                 type: string
+ *               password:
+ *                 type: string
  *     responses:
- *       200:
- *         description: User updated
- *       401:
- *         description: Unauthorized
+ *       201:
+ *         description: Account created and verification email sent
+ *       400:
+ *         description: Missing or invalid input
  */
-router.put("/update", authorize(), updateUser);
+router.post("/register", validateRegistration, register);
 
 /**
  * @swagger
- * /api/users/password:
- *   put:
- *     summary: Change current user's password
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
+ * /api/auth/verify-email/{code}:
+ *   get:
+ *     summary: Verify user email using verification code
+ *     tags: [Auth]
+ *     parameters:
+ *       - in: path
+ *         name: code
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *       400:
+ *         description: Invalid or expired verification code
+ */
+router.get("/verify-email/:code", verifyEmail);
+
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Login with email and password
+ *     tags: [Auth]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - email
+ *               - password
  *             properties:
- *               currentPassword:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Logged in successfully and returned JWT
+ *       401:
+ *         description: Invalid credentials
+ *       403:
+ *         description: Email not verified
+ */
+router.post("/login", validateLogin, (req, res, next) =>
+  login(req, res, next).catch(next)
+);
+
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Send password reset link to email
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Reset link sent
+ *       404:
+ *         description: User not found
+ */
+router.post("/forgot-password", forgotPassword);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Reset password using verification code
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - code
+ *               - newPassword
+ *             properties:
+ *               code:
  *                 type: string
  *               newPassword:
  *                 type: string
  *     responses:
  *       200:
- *         description: Password updated
+ *         description: Password reset successful
  *       400:
- *         description: Incorrect current password
- *       401:
- *         description: Unauthorized
+ *         description: Invalid or expired code
  */
-router.put("/password", authorize(), updatePassword);
-
-/**
- * @swagger
- * /api/users/me:
- *   delete:
- *     summary: Delete own account
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Account deleted
- *       401:
- *         description: Unauthorized
- */
-router.delete("/me", authorize(), deleteMyAccount);
-
-/**
- * @swagger
- * /api/users:
- *   get:
- *     summary: Get list of all users (admin only)
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of users
- *       403:
- *         description: Access denied
- */
-router.get("/", authorize("admin"), getAllUsers);
-
-/**
- * @swagger
- * /api/users/{id}:
- *   delete:
- *     summary: Delete user by ID (admin only)
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *         description: User ID
- *     responses:
- *       200:
- *         description: User deleted
- *       403:
- *         description: Access denied
- */
-router.delete("/:id", authorize("admin"), deleteUserById);
+router.post("/reset-password", resetPassword);
 
 export default router;
