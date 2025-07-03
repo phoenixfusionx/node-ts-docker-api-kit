@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./docs/swagger";
 import authRoutes from "./rotues/auth.routes";
-import usersRoutes from "./rotues/users.routes";
+import usersRoutes from "./rotues/user.routes";
 import {
   securityHeaders,
   apiLimiter,

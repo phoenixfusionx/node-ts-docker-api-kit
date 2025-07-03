@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
-import Blog, { IBlog, IComment } from "../models/Blog";
-import User from "../models/User";
+import Blog, { IBlog, IComment } from "../models/blog.model";
 import { TokenPayload } from "../types/auth";
 import mongoose from "mongoose";
-import { AuthenticatedRequest } from "../middleware/authMiddleware";
+import { AuthenticatedRequest } from "../middleware/auth.middleware";
 
 /**
  * @desc Create a new blog post

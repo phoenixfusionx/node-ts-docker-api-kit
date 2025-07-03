@@ -7,12 +7,12 @@ import {
   deleteBlog,
   addComment,
   deleteComment,
-} from "../controllers/blogController";
-import { authorize } from "../middleware/authMiddleware";
+} from "../controllers/blog.controller";
+import { authorize } from "../middleware/auth.middleware";
 import {
   validateBlog,
   validateComment,
-} from "../middleware/validationMiddleware";
+} from "../middleware/validation.middleware";
 
 const router = Router();
 
