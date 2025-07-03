@@ -2,7 +2,7 @@
   "name": "node.js-typescript-api-starter",
   "version": "1.0.0",
   "description": "Backend API for authentication using Node.js, Express, TypeScript, and MongoDB",
-  "main": "server.ts",
+  "main": "src/server.ts",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
     "build": "tsc",
