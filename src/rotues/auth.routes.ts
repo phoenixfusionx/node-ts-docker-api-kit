@@ -1,153 +1,148 @@
 import { Router } from "express";
 import {
-  register,
-  verifyEmail,
-  login,
-  forgotPassword,
-  resetPassword,
-} from "../controllers/authController";
+  getMe,
+  updateUser,
+  updatePassword,
+  deleteMyAccount,
+  getAllUsers,
+  deleteUserById,
+} from "../controllers/auth.controller";
+import { authorize } from "../middleware/auth.middleware";
 
 const router = Router();
 
 /**
  * @swagger
  * tags:
- *   name: Auth
- *   description: Authentication and account management
+ *   name: Users
+ *   description: User profile & management APIs
  */
 
 /**
  * @swagger
- * /api/auth/register:
- *   post:
- *     summary: Register a new user
- *     tags: [Auth]
+ * /api/users/me:
+ *   get:
+ *     summary: Get current logged-in user's data
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User data returned
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/me", authorize(), getMe);
+
+/**
+ * @swagger
+ * /api/users/update:
+ *   put:
+ *     summary: Update user's name or email
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - email
- *               - password
  *             properties:
  *               name:
  *                 type: string
  *               email:
  *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       201:
- *         description: Account created and verification email sent
- *       400:
- *         description: Missing or invalid input
- */
-router.post("/register", register);
-
-/**
- * @swagger
- * /api/auth/verify-email/{code}:
- *   get:
- *     summary: Verify user email using verification code
- *     tags: [Auth]
- *     parameters:
- *       - in: path
- *         name: code
- *         required: true
- *         schema:
- *           type: string
  *     responses:
  *       200:
- *         description: Email verified successfully
- *       400:
- *         description: Invalid or expired verification code
- */
-router.get("/verify-email/:code", verifyEmail);
-
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     summary: Login with email and password
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Logged in successfully and returned JWT
+ *         description: User updated
  *       401:
- *         description: Invalid credentials
- *       403:
- *         description: Email not verified
+ *         description: Unauthorized
  */
-router.post("/login", login);
+router.put("/update", authorize(), updateUser);
 
 /**
  * @swagger
- * /api/auth/forgot-password:
- *   post:
- *     summary: Send password reset link to email
- *     tags: [Auth]
+ * /api/users/password:
+ *   put:
+ *     summary: Change current user's password
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - email
  *             properties:
- *               email:
- *                 type: string
- *     responses:
- *       200:
- *         description: Reset link sent
- *       404:
- *         description: User not found
- */
-router.post("/forgot-password", forgotPassword);
-
-/**
- * @swagger
- * /api/auth/reset-password:
- *   post:
- *     summary: Reset password using verification code
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - code
- *               - newPassword
- *             properties:
- *               code:
+ *               currentPassword:
  *                 type: string
  *               newPassword:
  *                 type: string
  *     responses:
  *       200:
- *         description: Password reset successful
+ *         description: Password updated
  *       400:
- *         description: Invalid or expired code
+ *         description: Incorrect current password
+ *       401:
+ *         description: Unauthorized
  */
-router.post("/reset-password", resetPassword);
+router.put("/password", authorize(), updatePassword);
+
+/**
+ * @swagger
+ * /api/users/me:
+ *   delete:
+ *     summary: Delete own account
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deleted
+ *       401:
+ *         description: Unauthorized
+ */
+router.delete("/me", authorize(), deleteMyAccount);
+
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Get list of all users (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of users
+ *       403:
+ *         description: Access denied
+ */
+router.get("/", authorize("admin"), getAllUsers);
+
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   delete:
+ *     summary: Delete user by ID (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User deleted
+ *       403:
+ *         description: Access denied
+ */
+router.delete("/:id", authorize("admin"), deleteUserById);
 
 export default router;
