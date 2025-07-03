@@ -4,8 +4,9 @@
   "description": "Backend API for authentication using Node.js, Express, TypeScript, and MongoDB",
   "main": "server.ts",
   "scripts": {
-    "dev": "nodemon server.ts",
-    "start": "node server.js"
+    "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
   },
   "keywords": [
     "nodejs",
